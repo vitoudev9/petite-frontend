@@ -137,12 +137,12 @@ export default function WeekView({ weekStart, appointments, onClickAppt }: Props
                   style={{ height: CELL_H }}
                 >
                   {cellItems.map(({ appt, col, totalCols }) => {
+                    const cancelled = appt.status === "cancelled";
                     const cat   = appt.service?.category ?? "hair";
                     const color = CAT_COLORS[cat] ?? CAT_COLORS.hair;
 
-                    // Divide cell width evenly across totalCols, with a small gap
-                    const widthPct  = 100 / totalCols;
-                    const leftPct   = widthPct * col;
+                    const widthPct = 100 / totalCols;
+                    const leftPct  = widthPct * col;
 
                     return (
                       <div
@@ -150,21 +150,31 @@ export default function WeekView({ weekStart, appointments, onClickAppt }: Props
                         onClick={() => onClickAppt(appt)}
                         className="absolute top-0.5 bottom-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity px-1 py-0.5 overflow-hidden"
                         style={{
-                          left:        `calc(${leftPct}% + ${GAP}px)`,
-                          width:       `calc(${widthPct}% - ${GAP * 2}px)`,
-                          background:  color.bg,
-                          borderLeft:  `2px solid ${color.border}`,
+                          left:       `calc(${leftPct}% + ${GAP}px)`,
+                          width:      `calc(${widthPct}% - ${GAP * 2}px)`,
+                          background: cancelled ? "#F3F4F6" : color.bg,
+                          borderLeft: cancelled
+                            ? "2px dashed #D1D5DB"
+                            : `2px solid ${color.border}`,
+                          opacity: cancelled ? 0.7 : 1,
                         }}
                       >
                         <p
                           className="text-[11px] truncate leading-tight font-medium"
-                          style={{ color: color.text }}
+                          style={{
+                            color:          cancelled ? "#9CA3AF" : color.text,
+                            textDecoration: cancelled ? "line-through" : "none",
+                          }}
                         >
                           {appt.client?.name}
                         </p>
                         <p
                           className="text-[10px] truncate leading-tight"
-                          style={{ color: color.text, opacity: 0.7 }}
+                          style={{
+                            color:          cancelled ? "#9CA3AF" : color.text,
+                            opacity:        cancelled ? 1 : 0.7,
+                            textDecoration: cancelled ? "line-through" : "none",
+                          }}
                         >
                           {appt.service?.name}
                         </p>

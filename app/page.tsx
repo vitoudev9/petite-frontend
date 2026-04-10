@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { format, addDays, subDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useAppointments, useDeleteAppointment, useUpdateAppointment } from "@/hooks/useApi";
+import { ChevronLeft, ChevronRight, Plus, Pencil } from "lucide-react";
+import { useAppointments, useUpdateAppointment } from "@/hooks/useApi";
 import DayView from "@/components/calendar/DayView";
 import WeekView from "@/components/calendar/WeekView";
 import AppointmentForm from "@/components/forms/AppointmentForm";
@@ -13,19 +13,19 @@ import type { Appointment } from "@/types";
 type View = "day" | "week";
 
 export default function CalendarPage() {
-  const [view, setView]           = useState<View>("day");
-  const [currentDate, setDate]    = useState(new Date());
-  const [showForm, setShowForm]   = useState(false);
-  const [selected, setSelected]   = useState<Appointment | null>(null);
+  const [view, setView]         = useState<View>("day");
+  const [currentDate, setDate]  = useState(new Date());
+  const [showForm, setShowForm] = useState(false);
+  const [selected, setSelected] = useState<Appointment | null>(null);
+  const [editing, setEditing]   = useState(false);
 
-  const dateStr  = format(currentDate, "yyyy-MM-dd");
+  const dateStr   = format(currentDate, "yyyy-MM-dd");
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
   const { data: appts = [], isLoading } = useAppointments(
     view === "day" ? { date: dateStr } : {}
   );
 
-  const deleteAppt = useDeleteAppointment();
   const updateAppt = useUpdateAppointment();
 
   function navigate(dir: 1 | -1) {
@@ -36,11 +36,20 @@ export default function CalendarPage() {
     );
   }
 
+  function openAppt(appt: Appointment) {
+    setSelected(appt);
+    setEditing(false);
+  }
+
+  function closeModal() {
+    setSelected(null);
+    setEditing(false);
+  }
+
   const weekAppts = view === "week"
     ? appts.filter((a) => {
         const d = new Date(a.date);
-        const end = addDays(weekStart, 6);
-        return d >= weekStart && d <= end;
+        return d >= weekStart && d <= addDays(weekStart, 6);
       })
     : appts;
 
@@ -74,13 +83,9 @@ export default function CalendarPage() {
               ))}
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-                <ChevronLeft size={14} />
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ChevronLeft size={14} /></Button>
               <Button variant="ghost" size="sm" onClick={() => setDate(new Date())}>Today</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate(1)}>
-                <ChevronRight size={14} />
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate(1)}><ChevronRight size={14} /></Button>
             </div>
             <Button variant="primary" onClick={() => setShowForm(true)}>
               <Plus size={14} /> New booking
@@ -89,25 +94,21 @@ export default function CalendarPage() {
         }
       />
 
-      {/* Stats row */}
       {view === "day" && (
         <div className="grid grid-cols-3 gap-3 px-6 py-3 border-b border-gray-100 bg-white shrink-0">
           <StatCard label="Total bookings" value={todayStats.total} />
-          <StatCard label="Confirmed" value={todayStats.confirmed} />
-          <StatCard label="Completed" value={todayStats.completed} />
+          <StatCard label="Confirmed"      value={todayStats.confirmed} />
+          <StatCard label="Completed"      value={todayStats.completed} />
         </div>
       )}
 
-      {/* Calendar body */}
       <div className="flex-1 overflow-auto px-6 py-4 bg-white">
         {isLoading ? (
-          <div className="flex items-center justify-center h-40">
-            <Spinner />
-          </div>
+          <div className="flex items-center justify-center h-40"><Spinner /></div>
         ) : view === "day" ? (
-          <DayView appointments={appts} onClickAppt={setSelected} />
+          <DayView appointments={appts} onClickAppt={openAppt} />
         ) : (
-          <WeekView weekStart={weekStart} appointments={weekAppts} onClickAppt={setSelected} />
+          <WeekView weekStart={weekStart} appointments={weekAppts} onClickAppt={openAppt} />
         )}
       </div>
 
@@ -122,56 +123,60 @@ export default function CalendarPage() {
         </Modal>
       )}
 
-      {/* Appointment detail modal */}
+      {/* Appointment detail / edit modal */}
       {selected && (
-        <Modal title="Appointment" onClose={() => setSelected(null)}>
-          <div className="space-y-3">
-            <div>
-              <p className="text-[15px] font-semibold">{selected.client?.name}</p>
-              <p className="text-[13px] text-gray-500">
-                {selected.service?.name} · {selected.time} · {selected.duration} min
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-[13px]">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-400 text-[11px]">Staff</p>
-                <p className="font-medium">{selected.staff_member?.name}</p>
+        <Modal title={editing ? "Edit booking" : "Appointment"} onClose={closeModal}>
+          {editing ? (
+            <AppointmentForm
+              initial={selected}
+              onDone={closeModal}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <p className="text-[15px] font-semibold">{selected.client?.name}</p>
+                <p className="text-[13px] text-gray-500">
+                  {selected.service?.name} · {selected.time} · {selected.duration} min
+                </p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-400 text-[11px]">Price</p>
-                <p className="font-medium">${selected.service?.price}</p>
+              <div className="grid grid-cols-2 gap-3 text-[13px]">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-gray-400 text-[11px]">Staff</p>
+                  <p className="font-medium">{selected.staff_member?.name}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-gray-400 text-[11px]">Price</p>
+                  <p className="font-medium">${selected.service?.price}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge label={selected.status} variant={selected.status} />
+                {selected.paid && <Badge label="Paid" variant="completed" />}
+              </div>
+              {selected.notes && (
+                <p className="text-[13px] text-gray-500 bg-gray-50 rounded-lg p-3">
+                  {selected.notes}
+                </p>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button variant="default" size="sm" onClick={() => setEditing(true)}>
+                  <Pencil size={13} /> Edit booking
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={selected.status === "cancelled"}
+                  onClick={() => {
+                    updateAppt.mutate({ id: selected.id, data: { status: "cancelled" } });
+                    closeModal();
+                  }}
+                >
+                  {selected.status === "cancelled" ? "Cancelled" : "Cancel booking"}
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge label={selected.status} variant={selected.status} />
-              {selected.paid && <Badge label="Paid" variant="completed" />}
-            </div>
-            {selected.notes && (
-              <p className="text-[13px] text-gray-500 bg-gray-50 rounded-lg p-3">{selected.notes}</p>
-            )}
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  updateAppt.mutate({ id: selected.id, data: { status: "completed", paid: true } });
-                  setSelected(null);
-                }}
-              >
-                Mark complete & paid
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  deleteAppt.mutate(selected.id);
-                  setSelected(null);
-                }}
-              >
-                Cancel booking
-              </Button>
-            </div>
-          </div>
+          )}
         </Modal>
       )}
     </div>

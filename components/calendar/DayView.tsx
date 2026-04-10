@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import type { Appointment } from "@/types";
-import { Badge } from "@/components/ui";
 
 const CAT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   hair:   { bg: "#E6F1FB", border: "#85B7EB", text: "#0C447C" },
@@ -107,12 +106,12 @@ export default function DayView({ appointments, onClickAppt }: Props) {
 
         {/* Appointment blocks */}
         {layout.map(({ appt, col, totalCols }) => {
+          const cancelled = appt.status === "cancelled";
           const cat    = appt.service?.category ?? "hair";
           const color  = CAT_COLORS[cat] ?? CAT_COLORS.hair;
           const top    = timeToTop(appt.time);
           const height = Math.max((appt.duration / 60) * HOUR_H - 4, 28);
 
-          // Divide the available width evenly among simultaneous columns
           const availableWidth = `calc((100% - ${LEFT_GUTTER + RIGHT_PAD}px) / ${totalCols})`;
           const leftOffset     = `calc(${LEFT_GUTTER}px + (100% - ${LEFT_GUTTER + RIGHT_PAD}px) / ${totalCols} * ${col})`;
 
@@ -126,25 +125,36 @@ export default function DayView({ appointments, onClickAppt }: Props) {
                 height,
                 left:        leftOffset,
                 width:       availableWidth,
-                background:  color.bg,
-                borderLeft:  `3px solid ${color.border}`,
                 marginRight: totalCols > 1 ? 3 : 0,
+                // Cancelled: flat gray, dashed border, muted
+                background:  cancelled ? "#F3F4F6" : color.bg,
+                borderLeft:  cancelled
+                  ? "3px dashed #D1D5DB"
+                  : `3px solid ${color.border}`,
+                opacity: cancelled ? 0.7 : 1,
               }}
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 <p
                   className="text-[12px] font-medium leading-tight truncate flex-1"
-                  style={{ color: color.text }}
+                  style={{
+                    color:          cancelled ? "#9CA3AF" : color.text,
+                    textDecoration: cancelled ? "line-through" : "none",
+                  }}
                 >
                   {appt.client?.name ?? "—"}
                 </p>
-                {appt.status !== "confirmed" && (
-                  <Badge label={appt.status} variant={appt.status} />
+                {cancelled && (
+                  <span className="text-[10px] text-gray-400 shrink-0">Cancelled</span>
                 )}
               </div>
               <p
                 className="text-[11px] leading-tight truncate"
-                style={{ color: color.text, opacity: 0.75 }}
+                style={{
+                  color:          cancelled ? "#9CA3AF" : color.text,
+                  opacity:        cancelled ? 1 : 0.75,
+                  textDecoration: cancelled ? "line-through" : "none",
+                }}
               >
                 {appt.service?.name} · {appt.staff_member?.name}
               </p>

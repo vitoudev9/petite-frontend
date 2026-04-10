@@ -15,7 +15,7 @@ const queryClient = new QueryClient({
 });
 
 const NAV = [
-  { href: "/",           label: "Calendar",  icon: CalendarDays, dot: "#378ADD" },
+  { href: "/",           label: "Appointments",  icon: CalendarDays, dot: "#378ADD" },
   { href: "/clients",    label: "Clients",   icon: Users,        dot: "#1D9E75" },
   { href: "/staffs",     label: "Staff",     icon: UserCheck,    dot: "#D85A30" },
   { href: "/services",   label: "Services",  icon: Scissors,     dot: "#9B59B6" },
