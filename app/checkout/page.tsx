@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CheckCircle, CreditCard, Banknote, Wallet } from "lucide-react";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useApi";
-import { Avatar, Button, Spinner } from "@/components/ui";
+import { Avatar, Spinner } from "@/components/ui";
 import type { Appointment } from "@/types";
 
 const AVATAR_COLORS   = ["#378ADD","#1D9E75","#D85A30","#9B59B6","#BA7517","#0F6E56"];
@@ -45,11 +45,19 @@ export default function CheckoutPage() {
   const [discountType, setDiscountType]   = useState<"$" | "%">("%");
   const [discountValue, setDiscountValue] = useState(0);
 
-  const price          = selected?.service?.price ?? 0;
+  // ── Price calculation ─────────────────────────────────────────────────────
+  const servicePrice = selected?.service?.price ?? 0;
+
+  const addOnTotal = (selected?.appointment_addons ?? []).reduce(
+    (sum, aa) => sum + aa.unit_price * aa.quantity,
+    0
+  );
+
+  const subtotal       = servicePrice + addOnTotal;
   const discountAmount = discountType === "%"
-    ? Math.round(price * discountValue) / 100
-    : Math.min(discountValue, price);
-  const total = Math.max(price - discountAmount, 0);
+    ? Math.round(subtotal * discountValue) / 100
+    : Math.min(discountValue, subtotal);
+  const total = Math.max(subtotal - discountAmount, 0);
 
   async function checkout() {
     if (!selected) return;
@@ -66,7 +74,7 @@ export default function CheckoutPage() {
     setDiscountType("%");
   }
 
-  const unpaid = appts.filter((a) => !done.includes(a.id));
+  const unpaid         = appts.filter((a) => !done.includes(a.id));
   const selectedMethod = PAYMENT_METHODS.find((m) => m.id === method)!;
 
   return (
@@ -86,22 +94,33 @@ export default function CheckoutPage() {
               <p className="text-[13px]">All checked out!</p>
             </div>
           )}
-          {unpaid.map((a) => (
-            <div
-              key={a.id}
-              onClick={() => selectAppt(a)}
-              className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-100 transition-colors ${
-                selected?.id === a.id ? "bg-gray-50" : "hover:bg-gray-50"
-              }`}
-            >
-              <Avatar name={a.client?.name ?? "?"} color={AVATAR_COLORS[(a.client_id ?? 0) % AVATAR_COLORS.length]} size={34} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium truncate">{a.client?.name}</p>
-                <p className="text-[12px] text-gray-400 truncate">{a.service?.name} · {a.time}</p>
+          {unpaid.map((a) => {
+            const apptAddOnTotal = (a.appointment_addons ?? []).reduce(
+              (sum, aa) => sum + aa.unit_price * aa.quantity, 0
+            );
+            const apptTotal = (a.service?.price ?? 0) + apptAddOnTotal;
+            return (
+              <div
+                key={a.id}
+                onClick={() => selectAppt(a)}
+                className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-100 transition-colors ${
+                  selected?.id === a.id ? "bg-gray-50" : "hover:bg-gray-50"
+                }`}
+              >
+                <Avatar name={a.client?.name ?? "?"} color={AVATAR_COLORS[(a.client_id ?? 0) % AVATAR_COLORS.length]} size={34} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium truncate">{a.client?.name}</p>
+                  <p className="text-[12px] text-gray-400 truncate">{a.service?.name} · {a.time}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[13px] font-semibold">${apptTotal.toFixed(2)}</p>
+                  {apptAddOnTotal > 0 && (
+                    <p className="text-[11px] text-gray-400">+{(a.appointment_addons ?? []).length} add-on{(a.appointment_addons ?? []).length > 1 ? "s" : ""}</p>
+                  )}
+                </div>
               </div>
-              <p className="text-[13px] font-semibold shrink-0">${a.service?.price}</p>
-            </div>
-          ))}
+            );
+          })}
           {done.length > 0 && (
             <div className="px-4 py-2 border-t border-gray-100">
               <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-2">Checked out</p>
@@ -141,11 +160,33 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </div>
+
               <div className="space-y-2 text-[13px]">
+                {/* Base service */}
                 <div className="flex justify-between">
                   <span className="text-gray-500">{selected.service?.name}</span>
-                  <span className="font-medium">${price.toFixed(2)}</span>
+                  <span className="font-medium">${servicePrice.toFixed(2)}</span>
                 </div>
+
+                {/* Add-on line items */}
+                {(selected.appointment_addons ?? []).map((aa) => (
+                  <div key={aa.id} className="flex justify-between text-gray-500">
+                    <span className="pl-3 before:content-['·'] before:mr-1.5 before:text-gray-300">
+                      {aa.addon?.name}{aa.quantity > 1 ? ` × ${aa.quantity}` : ""}
+                    </span>
+                    <span>${(aa.unit_price * aa.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+
+                {/* Subtotal — only when add-ons exist */}
+                {(selected.appointment_addons ?? []).length > 0 && (
+                  <div className="flex justify-between text-gray-400 border-t border-dashed border-gray-200 pt-1.5">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {/* Discount */}
                 {discountAmount > 0 && (
                   <>
                     <div className="flex justify-between text-green-600">
@@ -158,6 +199,8 @@ export default function CheckoutPage() {
                     </div>
                   </>
                 )}
+
+                {/* Total */}
                 <div className="flex justify-between pt-2 border-t border-gray-100 text-[15px]">
                   <span className="font-semibold">Total</span>
                   <span className="font-semibold">${total.toFixed(2)}</span>
@@ -175,9 +218,7 @@ export default function CheckoutPage() {
                       key={t}
                       onClick={() => { setDiscountType(t); setDiscountValue(0); }}
                       className={`px-3 py-2 text-[13px] font-medium transition-colors ${
-                        discountType === t
-                          ? "bg-gray-900 text-white"
-                          : "bg-white text-gray-600 hover:bg-gray-50"
+                        discountType === t ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
                       }`}
                     >
                       {t}
@@ -191,7 +232,7 @@ export default function CheckoutPage() {
                   <input
                     type="number"
                     min={0}
-                    max={discountType === "%" ? 100 : price}
+                    max={discountType === "%" ? 100 : subtotal}
                     step={discountType === "%" ? 5 : 1}
                     value={discountValue === 0 ? "" : discountValue}
                     onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))}
@@ -217,7 +258,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* ── Payment method ── */}
+            {/* Payment method */}
             <div>
               <p className="text-[12px] text-gray-500 mb-2">Payment method</p>
               <div className="grid grid-cols-2 gap-2">
@@ -245,9 +286,7 @@ export default function CheckoutPage() {
                           {m.sub}
                         </p>
                       </div>
-                      {isActive && (
-                        <span className="w-2 h-2 rounded-full bg-white/80 shrink-0" />
-                      )}
+                      {isActive && <span className="w-2 h-2 rounded-full bg-white/80 shrink-0" />}
                     </button>
                   );
                 })}

@@ -1,10 +1,11 @@
 import axios from "axios";
 import type {
-  Appointment, Client, Staff, Service,
+  Appointment, Client, Staff, Service, AddOn,
   CreateAppointment, UpdateAppointment,
   CreateClient, UpdateClient,
   CreateStaff, UpdateStaff,
   CreateService, UpdateService,
+  CreateAddOn, UpdateAddOn,
 } from "@/types";
 
 const api = axios.create({
@@ -88,4 +89,31 @@ export const servicesApi = {
 
   delete: (id: number) =>
     api.delete(`/services/${id}`),
+};
+
+// ── Add-ons ───────────────────────────────────────────────────────────────────
+
+export const addonsApi = {
+  // Global list / CRUD
+  list: () =>
+    api.get<AddOn[]>("/addons").then((r) => r.data),
+
+  create: (data: CreateAddOn) =>
+    api.post<AddOn>("/addons", data).then((r) => r.data),
+
+  update: (id: number, data: UpdateAddOn) =>
+    api.patch<AddOn>(`/addons/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) =>
+    api.delete(`/addons/${id}`),
+
+  // Per-service
+  listForService: (serviceId: number) =>
+    api.get<AddOn[]>(`/addons/service/${serviceId}`).then((r) => r.data),
+
+  attachToService: (serviceId: number, addonId: number) =>
+    api.post(`/addons/service/${serviceId}/${addonId}`),
+
+  detachFromService: (serviceId: number, addonId: number) =>
+    api.delete(`/addons/service/${serviceId}/${addonId}`),
 };

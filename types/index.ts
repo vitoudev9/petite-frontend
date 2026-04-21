@@ -18,6 +18,22 @@ export interface Service {
   deposit: number;
 }
 
+export interface AddOn {
+  id: number;
+  name: string;
+  price: number;
+  allow_quantity: boolean;
+  max_quantity: number | null;
+}
+
+export interface AppointmentAddOn {
+  id: number;
+  addon_id: number;
+  quantity: number;
+  unit_price: number;
+  addon?: AddOn;
+}
+
 export interface Client {
   id: number;
   name: string;
@@ -32,8 +48,8 @@ export interface Client {
 
 export interface Appointment {
   id: number;
-  date: string;       // YYYY-MM-DD
-  time: string;       // HH:MM
+  date: string;
+  time: string;
   duration: number;
   status: "confirmed" | "cancelled" | "completed" | "no_show";
   paid: boolean;
@@ -44,14 +60,22 @@ export interface Appointment {
   client?: Client;
   staff_member?: Staff;
   service?: Service;
+  appointment_addons?: AppointmentAddOn[];
 }
 
 export type AppointmentStatus = Appointment["status"];
 
 // ── Form payload types ───────────────────────────────────────────────────────
 
-export type CreateAppointment = Omit<Appointment, "id" | "client" | "staff_member" | "service">;
-export type UpdateAppointment = Partial<CreateAppointment>;
+export interface AppointmentAddOnInput {
+  addon_id: number;
+  quantity: number;
+}
+
+export type CreateAppointment = Omit<Appointment, "id" | "client" | "staff_member" | "service" | "appointment_addons"> & {
+  add_ons?: AppointmentAddOnInput[];
+};
+export type UpdateAppointment = Partial<Omit<CreateAppointment, "client_id">>;
 
 export type CreateClient = Omit<Client, "id" | "tags_list" | "total_visits" | "total_spend">;
 export type UpdateClient = Partial<CreateClient>;
@@ -61,3 +85,6 @@ export type UpdateStaff = Partial<CreateStaff>;
 
 export type CreateService = Omit<Service, "id">;
 export type UpdateService = Partial<CreateService>;
+
+export type CreateAddOn = Omit<AddOn, "id">;
+export type UpdateAddOn = Partial<CreateAddOn>;

@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { appointmentsApi, clientsApi, staffApi, servicesApi } from "@/lib/api";
+import { appointmentsApi, clientsApi, staffApi, servicesApi, addonsApi } from "@/lib/api";
 import type {
   CreateAppointment, UpdateAppointment,
   CreateClient, UpdateClient,
   CreateStaff, UpdateStaff,
   CreateService, UpdateService,
+  CreateAddOn, UpdateAddOn,
 } from "@/types";
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -17,7 +18,72 @@ export const QK = {
   staff:                           () => ["staff"] as const,
   staffMember:  (id: number)      => ["staff", id] as const,
   services:     (cat?: string)    => ["services", cat ?? "all"] as const,
+  addons:                              () => ["addons"] as const,
+  serviceAddons:(serviceId: number) => ["addons", "service", serviceId] as const,
 };
+
+// ── Add-ons ───────────────────────────────────────────────────────────────────
+
+export function useAddOns() {
+  return useQuery({ queryKey: QK.addons(), queryFn: addonsApi.list });
+}
+
+export function useServiceAddOns(serviceId: number) {
+  return useQuery({
+    queryKey: QK.serviceAddons(serviceId),
+    queryFn:  () => addonsApi.listForService(serviceId),
+    enabled:  !!serviceId,
+  });
+}
+
+export function useCreateAddOn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateAddOn) => addonsApi.create(data),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: QK.addons() }),
+  });
+}
+
+export function useUpdateAddOn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateAddOn }) =>
+      addonsApi.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.addons() }),
+  });
+}
+
+export function useDeleteAddOn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => addonsApi.delete(id),
+    onSuccess:  () => {
+      qc.invalidateQueries({ queryKey: QK.addons() });
+      qc.invalidateQueries({ queryKey: ["addons", "service"] });
+    },
+  });
+}
+
+export function useAttachAddOn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ serviceId, addonId }: { serviceId: number; addonId: number }) =>
+      addonsApi.attachToService(serviceId, addonId),
+    onSuccess: (_, { serviceId }) =>
+      qc.invalidateQueries({ queryKey: QK.serviceAddons(serviceId) }),
+  });
+}
+
+export function useDetachAddOn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ serviceId, addonId }: { serviceId: number; addonId: number }) =>
+      addonsApi.detachFromService(serviceId, addonId),
+    onSuccess: (_, { serviceId }) =>
+      qc.invalidateQueries({ queryKey: QK.serviceAddons(serviceId) }),
+  });
+}
+
 
 // ── Appointments ──────────────────────────────────────────────────────────────
 
@@ -172,3 +238,4 @@ export function useDeleteService() {
     onSuccess:  () => qc.invalidateQueries({ queryKey: ["services"] }),
   });
 }
+
