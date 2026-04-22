@@ -93,7 +93,7 @@ export default function ServicesPage() {
 
   const [showNewSvc, setShowNewSvc]   = useState(false);
   const [editingSvc, setEditingSvc]   = useState<Service | null>(null);
-  const [svcForm, setSvcForm]         = useState({ name: "", category: "hair", duration: 60, price: 0, deposit: 0 });
+  const [svcForm, setSvcForm]         = useState({ name: "", category: "hair", duration: "60", price: "", deposit: "" });
 
   const [showNewAddon, setShowNewAddon] = useState(false);
   const [editingAddon, setEditingAddon] = useState<AddOn | null>(null);
@@ -106,8 +106,13 @@ export default function ServicesPage() {
   }, {});
 
   async function saveNewSvc() {
-    await createService.mutateAsync(svcForm);
-    setSvcForm({ name: "", category: "hair", duration: 60, price: 0, deposit: 0 });
+    await createService.mutateAsync({
+      ...svcForm,
+      duration: Number(svcForm.duration) || 60,
+      price:    Number(svcForm.price)    || 0,
+      deposit:  Number(svcForm.deposit)  || 0,
+    });
+    setSvcForm({ name: "", category: "hair", duration: "60", price: "", deposit: "" });
     setShowNewSvc(false);
   }
 
@@ -284,9 +289,9 @@ export default function ServicesPage() {
             </Select>
           </FormField>
           <div className="grid grid-cols-3 gap-3">
-            <FormField label="Duration (min)"><Input type="number" min={15} step={15} value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: Number(e.target.value) })} /></FormField>
-            <FormField label="Price ($)"><Input type="number" min={0} step={5} value={svcForm.price} onChange={(e) => setSvcForm({ ...svcForm, price: Number(e.target.value) })} /></FormField>
-            <FormField label="Deposit ($)"><Input type="number" min={0} step={5} value={svcForm.deposit} onChange={(e) => setSvcForm({ ...svcForm, deposit: Number(e.target.value) })} /></FormField>
+            <FormField label="Duration (min)"><Input type="number" min={15} step={15} value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: e.target.value })} /></FormField>
+            <FormField label="Price ($)"><Input type="number" min={0} step={5} value={svcForm.price} onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })} /></FormField>
+            <FormField label="Deposit ($)"><Input type="number" min={0} step={5} value={svcForm.deposit} onChange={(e) => setSvcForm({ ...svcForm, deposit: e.target.value })} /></FormField>
           </div>
           <div className="flex gap-2 mt-2">
             <Button variant="primary" onClick={saveNewSvc} disabled={!svcForm.name} className="flex-1">{createService.isPending ? "Saving…" : "Add service"}</Button>
@@ -305,9 +310,9 @@ export default function ServicesPage() {
             </Select>
           </FormField>
           <div className="grid grid-cols-3 gap-3">
-            <FormField label="Duration (min)"><Input type="number" min={15} step={15} value={editingSvc.duration} onChange={(e) => setEditingSvc({ ...editingSvc, duration: Number(e.target.value) })} /></FormField>
-            <FormField label="Price ($)"><Input type="number" min={0} value={editingSvc.price} onChange={(e) => setEditingSvc({ ...editingSvc, price: Number(e.target.value) })} /></FormField>
-            <FormField label="Deposit ($)"><Input type="number" min={0} value={editingSvc.deposit} onChange={(e) => setEditingSvc({ ...editingSvc, deposit: Number(e.target.value) })} /></FormField>
+            <FormField label="Duration (min)"><Input type="number" min={15} step={15} value={editingSvc.duration} onChange={(e) => setEditingSvc({ ...editingSvc, duration: e.target.value === "" ? 0 : Number(e.target.value) })} /></FormField>
+            <FormField label="Price ($)"><Input type="number" min={0} value={editingSvc.price} onChange={(e) => setEditingSvc({ ...editingSvc, price: e.target.value === "" ? 0 : Number(e.target.value) })} /></FormField>
+            <FormField label="Deposit ($)"><Input type="number" min={0} value={editingSvc.deposit} onChange={(e) => setEditingSvc({ ...editingSvc, deposit: e.target.value === "" ? 0 : Number(e.target.value) })} /></FormField>
           </div>
           <div className="flex gap-2 mt-2">
             <Button variant="primary" onClick={saveEditSvc} className="flex-1">{updateService.isPending ? "Saving…" : "Save changes"}</Button>
