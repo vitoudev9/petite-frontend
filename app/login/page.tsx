@@ -2,14 +2,25 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  CredentialsSignin:   "Incorrect username or password.",
+  SessionRequired:     "Please sign in to continue.",
+  Default:             "An error occurred. Please try again.",
+};
 
 export default function LoginPage() {
-  const router = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const urlError     = searchParams.get("error");
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(
+    urlError ? (ERROR_MESSAGES[urlError] ?? ERROR_MESSAGES.Default) : ""
+  );
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +36,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Incorrect username or password. Please try again.");
+      setError(ERROR_MESSAGES[result.error] ?? ERROR_MESSAGES.Default);
     } else {
       router.push("/");
       router.refresh();
