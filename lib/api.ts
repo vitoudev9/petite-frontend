@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { getSession, signOut } from "next-auth/react";
 import type {
   Appointment, Client, Staff, Service, AddOn,
   CreateAppointment, UpdateAppointment,
@@ -12,6 +13,49 @@ const api = axios.create({
   baseURL: "/api",
   headers: { "Content-Type": "application/json" },
 });
+
+
+// ── Request interceptor — attach access token ─────────────────────────────────
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const session = await getSession();
+  if (session?.accessToken) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
+  }
+  return config;
+});
+ 
+// ── Response interceptor — handle 401 with refresh ───────────────────────────
+let isRefreshing = false;
+ 
+api.interceptors.response.use(
+  (res) => res,
+  async (error: AxiosError) => {
+    if (error.response?.status === 401 && !isRefreshing) {
+      isRefreshing = true;
+      try {
+        const session = await getSession();
+        if (session?.refreshToken) {
+          const res = await fetch("/api/auth/refresh", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ refresh_token: session.refreshToken }),
+          });
+          if (res.ok) {
+            // Retry the original request — next interceptor will pick up new token
+            isRefreshing = false;
+            return api.request(error.config!);
+          }
+        }
+      } catch {
+        // Refresh failed — sign out
+      }
+      isRefreshing = false;
+      await signOut({ callbackUrl: "/login" });
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 // ── Appointments ─────────────────────────────────────────────────────────────
 
